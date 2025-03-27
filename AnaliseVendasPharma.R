@@ -90,7 +90,7 @@ ggplot(top_categorias_verao, aes(x = reorder(Classe_ATC, -Total_Vendas), y = Tot
   ) + 
   theme_minimal()
 
-
+#gráfico de dominio sazonal das classificações ATC
 dados_long %>%
   mutate(Ano = year(Data)) %>%
   filter(Classe_ATC %in% c("N02BE", "N05B", "M01AB")) %>%
@@ -107,33 +107,56 @@ ggplot(vendas_estacao, aes(x = Estação, y = Classe_ATC, fill = Total_Vendas)) 
   labs(title = "N02BE domina 45% das vendas no inverno!")  
 
 ggplot(vendas_estacao, 
-       aes(x = factor(Estação, levels = c("Primavera", "Verão", "Outono", "Inverno")),
-           y = reorder(Classe_ATC, -Total_Vendas), 
-           fill = Total_Vendas)) +
-  geom_tile(color = "white", linewidth = 0.5) +  # Linhas brancas entre os tiles
-  geom_text(aes(label = paste0(round(Contribuicao_Perc, 1), "%")), 
-            color = "white", 
-            size = 4, 
-            fontface = "bold") +
-  scale_fill_viridis(
-    option = "C", 
-    direction = -1, 
-    labels = scales::comma,
-    name = "Vendas Totais"
-  ) +
+       aes(
+         x = factor(Estação, levels = c("Primavera", "Verão", "Outono", "Inverno")),
+         y = reorder(Classe_ATC, -Total_Vendas), 
+         fill = Total_Vendas
+       )) +
+  geom_tile(color = "white", linewidth = 0.5) +
+  geom_text(
+    aes(label = paste0(round(Contribuicao_Perc, 1), "%"),  
+        color = "white", 
+        size = 3,  
+        fontface = "bold"
+    )) +  
+      scale_fill_viridis(
+        option = "C", 
+        direction = -1,
+        labels = scales::label_number(scale = 1e-3, suffix = "K"),  
+        name = "Vendas Totais (em milhares)"
+      ) +
+      labs(
+        title = "DOMÍNIO SAZONAL DAS CLASSIFICAÇÕES ATC",
+        subtitle = "Cada célula mostra o % de contribuição da estação para a categoria",
+        x = "Estação",
+        y = "Classe ATC",
+        caption = "Fonte: Pharma Sales Data (2014-2019)"
+      ) +
+      theme_minimal(base_size = 12) +
+      theme(
+        plot.title = element_text(face = "bold", size = 16, hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5, color = "gray40"),
+        axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
+        legend.position = "bottom",
+        legend.key.width = unit(2, "cm"),  
+        panel.grid = element_blank()
+      )
+
+# Filtra R03 e N02BE e calcula médias mensais
+comparacao <- dados_long %>%
+  filter(Classe_ATC %in% c("R06", "N02BE", "N05B")) %>%
+  mutate(Mes = month(Data, label = TRUE)) %>%
+  group_by(Classe_ATC, Mes) %>%
+  summarise(Media = mean(Quantidade))
+
+# Gráfico de barras lado a lado
+ggplot(comparacao, aes(x = Mes, y = Media, fill = Classe_ATC)) +
+  geom_col(position = "dodge") +
   labs(
-    title = "DOMÍNIO SAZONAL DAS CLASSIFICAÇÕES ATC",
-    subtitle = "Cada célula mostra o % de contribuição da estação para a categoria",
-    x = "Estação",
-    y = "Classe ATC",
-    caption = "Fonte: Pharma Sales Data (2014-2019)"
+    title = "N05B, N02BE, R06: SAZONALIDADE EM COMPARAÇÃO",
+    x = "Mês",
+    y = "Média de Vendas (2014-2019)"
   ) +
-  theme_minimal(base_size = 12) +
-  theme(
-    plot.title = element_text(face = "bold", size = 16, hjust = 0.5),
-    plot.subtitle = element_text(hjust = 0.5, color = "gray40"),
-    axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1),
-    legend.position = "bottom",
-    panel.grid = element_blank()
-  ) +
-  coord_fixed(ratio = 0.8) 
+  scale_fill_manual(values = c("#FF6347", "#4786FF", "#778063"), 
+                    labels = c("N02BE (Analgésicos)", "R06 (Anti-histamínicos)", "N05B (Ansiolíticos)")) +
+  theme_minimal()
